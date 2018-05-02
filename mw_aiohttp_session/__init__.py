@@ -1,6 +1,8 @@
 __author__ = 'candy'
 
-__all__ = ["mw_setup_session_middleware"]
+__all__ = ["mw_setup_session_middleware",
+           "get_session",
+           "default_handle_session_middleware"]
 
 from aiohttp import web
 import json
@@ -9,13 +11,17 @@ STORAGE_KEY='mw_aio_storage'
 SESSION_KEY='mw_aio_session'
 COOKIE_NAME ='sessionid'
 
+async def get_session(request):
+    return await request[STORAGE_KEY].load_session(request)
+
 def session_middleware(storage):
     @web.middleware
     async def factory(request, handler):
+        request[STORAGE_KEY]=storage
+
         # print("in session middleware")
         # 仅检查session 是否合法，并不做产生和保存session动作
         #
-        await storage.load_session(request)
         raise_response = False
         try:
             response = await handler(request)
@@ -31,6 +37,7 @@ class SessionRedisStorage():
     def __init__(self,redis_pool,cookie_name=COOKIE_NAME):
         self._redis =redis_pool
         self.cookie_name =cookie_name
+
     async def load_session(self,request):
         session = request.get(SESSION_KEY)
         if session is None:
@@ -47,13 +54,30 @@ class SessionRedisStorage():
                         if data is not None:
                             request[SESSION_KEY]= data
                             return data
+        return session
 
+@web.middleware
+async def default_handle_session_middleware(request,handler):
+    session =await get_session(request)
+    if session is None:
+        return web.Response(text="not permissions,please login",status=403)
+    else:
+        raise_response = False
+        try:
+            response = await handler(request)
+        except web.HTTPException as exc:
+            response = exc
+            raise_response = True
+        if raise_response:
+            raise response
+        return response
 
-def setup_session_middleware(app, storage):
-    """Setup the library in aiohttp fashion."""
-    app.middlewares.append(session_middleware(storage))
 
 def mw_setup_session_middleware(app,redis_pool):
     storage =SessionRedisStorage(redis_pool)
     # app[STORAGE_KEY]=storage
-    setup_session_middleware(app,storage)
+    app.middlewares.append(session_middleware(storage))
+
+def mw_setup_handle_session_middleware(app,redis_pool):
+    mw_setup_session_middleware(app,redis_pool)
+    app.middlewares.append(default_handle_session_middleware)
