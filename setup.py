@@ -9,20 +9,36 @@ extras_require = {
     'aioredis': ['aioredis>=1.0.0'],
 }
 
+def fpath(name):
+    return os.path.join(os.path.dirname(__file__), name)
 
-with codecs.open(os.path.join(os.path.abspath(os.path.dirname(
-        __file__)), 'aiohttp_session', '__init__.py'), 'r', 'latin1') as fp:
+
+def read(fname):
+    return open(fpath(fname),encoding='utf-8').read()
+
+
+def desc():
+    info = read('README.rst')
     try:
-        version = re.findall(r"^__version__ = '([^']+)'$", fp.read(), re.M)[0]
-    except IndexError:
-        raise RuntimeError('Unable to determine version.')
-def read(f):
-    return open(os.path.join(os.path.dirname(__file__), f)).read().strip()
+        return info + '\n\n' + read('doc/changelog.rst')
+    except IOError:
+        return info
 
-setup(name='aiohttp-session',
-      version=version,
+
+file_text = read(fpath('mw_aiohttp_session/__init__.py'))
+
+
+def grep(attrname):
+    pattern = r"{0}\W*=\W*'([^']+)'".format(attrname)
+    strval, = re.findall(pattern, file_text)
+    return strval
+
+
+setup(name='mw-aiohttp-session',
+      version=grep('__version__'),
       description=("only for maxwin aiohttp session"),
-      long_description='\n\n'.join((read('README.md'))),
+
+      long_description=desc(),
       classifiers=[
           'License :: OSI Approved :: Apache Software License',
           'Intended Audience :: Developers',
@@ -31,8 +47,8 @@ setup(name='aiohttp-session',
           'Topic :: Internet :: WWW/HTTP',
           'Framework :: AsyncIO',
       ],
-      author='candy',
-      author_email='hfcandyabc@163.com',
+      author=grep('__author__'),
+      author_email=grep('__email__'),
       url='',
       license='Apache 2',
       packages=['mw_aiohttp_session'],

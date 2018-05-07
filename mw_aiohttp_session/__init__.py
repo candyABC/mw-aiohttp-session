@@ -1,8 +1,11 @@
-__author__ = 'candy'
+__author__ = 'candyabc'
+__email__ = 'hfcandyabc@163.com'
 
 __all__ = ["mw_setup_session_middleware",
            "get_session",
            "default_handle_session_middleware"]
+
+__version__ = '0.0.2'
 
 from aiohttp import web
 import json
@@ -60,7 +63,7 @@ class SessionRedisStorage():
 async def default_handle_session_middleware(request,handler):
     session =await get_session(request)
     if session is None:
-        return web.Response(text="not permissions,please login",status=403)
+        return web.Response(text="no session",status=403)
     else:
         raise_response = False
         try:
@@ -74,10 +77,22 @@ async def default_handle_session_middleware(request,handler):
 
 
 def mw_setup_session_middleware(app,redis_pool):
+    '''
+    设定从redisstorge取session,但在handle中主动调用get_session方法，此处不处理
+    :param app: 
+    :param redis_pool: 
+    :return: 
+    '''
     storage =SessionRedisStorage(redis_pool)
     # app[STORAGE_KEY]=storage
     app.middlewares.append(session_middleware(storage))
 
 def mw_setup_handle_session_middleware(app,redis_pool):
+    '''
+    对每个request取得session，并检查是否存在session,不存在则表示没有权限，返回403
+    :param app: 
+    :param redis_pool: 
+    :return: 
+    '''
     mw_setup_session_middleware(app,redis_pool)
     app.middlewares.append(default_handle_session_middleware)
