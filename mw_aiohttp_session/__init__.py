@@ -44,6 +44,11 @@ class SessionRedisStorage():
     async def load_session(self,request):
         session = request.get(SESSION_KEY)
         if session is None:
+            #对kong内的服务是带了 header ,不要再去取cookie
+            uid =request.headers.get('X-Consumer-ID')
+            if uid is not None:
+                request[SESSION_KEY]={'uid':uid}
+                return request[SESSION_KEY]
             cookieid = request.cookies.get(self.cookie_name)
             if cookieid is not None:
                 with await self._redis as conn:
