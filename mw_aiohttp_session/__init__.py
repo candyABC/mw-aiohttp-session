@@ -5,7 +5,7 @@ __all__ = ["mw_setup_session_middleware",
            "get_session",
            "default_handle_session_middleware"]
 
-__version__ = '0.0.2'
+__version__ = '0.0.3'
 
 from aiohttp import web
 import json
